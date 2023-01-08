@@ -1,0 +1,88 @@
+- hosts: all
+  become: true
+  name: dependency
+  tasks:
+    - name: Install common dependencies
+      yum:
+        name:
+          - libselinux-python
+          - libsemanage-python
+        state: present
+
+- hosts: webserver
+  name: configure web server
+  become: true
+  tasks:
+    - name: install>>>>httpd>>>>php>>>>github
+      yum:
+        name: '{{item}}'
+        state: present
+      loop:
+        - httpd
+        - php
+        - git
+        - php-mysql
+    - name: start httpd
+      service:
+        name: httpd
+        state: started
+        enabled: yes
+    - name: remove
+      shell: rm -rf /var/www/html/*
+    - name: clone git hub repo
+      git:
+        repo: https://github.com/mohammedashiqu/app-ecommerce_project.git
+        dest: /var/www/html
+        force: yes
+
+
+- hosts: database
+  name: configure web server
+  become: true
+  tasks:
+    - name: install mariadb 
+      yum:
+        name: mariadb-server
+        state: present
+    - name: install mariadb
+      yum:
+        name: MySQL-python
+        state: present
+    - name: install mariadb
+      yum:
+        name: git
+        state: present
+    - name: start service
+      service:
+        name: mariadb
+        state: started
+        enabled: yes 
+    - name: create database on mariadb
+      mysql_db:
+        name: ecomdb
+        state: present
+    - name: create application user
+      mysql_user:
+        name: ecomuser
+        password: ecompassword
+        priv: '*.*:ALL'
+        host: localhost
+        state: present
+    - name: create folder
+      shell: mkdir /github
+    - name: download file
+      git:
+        repo: https://github.com/mohammedashiqu/app-ecommerce_project.git
+        dest: /github
+    - name: add database table an dproduct information
+      shell: mysql -f < /git/new/assets/db-load-script.sql
+- hosts: webserver
+  name: chnage database server information
+  become: true
+  tasks:
+    - name: ip of db
+      command: sudo sed -i 's/172.20.1.101/18.216.151.23/g' /var/www/html/index.php
+    - name: restart
+      service:
+        name: httpd
+        state: restarted 
