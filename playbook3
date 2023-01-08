@@ -1,0 +1,80 @@
+#install websever part
+- hosts: web
+  name: installing required part for webserver
+  become: yes
+  tasks:
+#install required package
+    - name: install required package for websever
+      yum:
+        name: '{{item}}'
+        state: present
+      loop:
+        - httpd
+        - php
+        - php-mysql
+        - git
+#start webserver
+    - name: start webserver
+      service:
+        name: httpd
+        state: started
+#git hub repo clone
+    - name: clone repository to /var/www/html
+      git:
+        repo: https://github.com/mohammedashiqu/app-ecommerce_project.git
+        dest: /var/www/html
+#database prerequisite
+
+- hosts: db
+  name: database
+  become: yes
+  tasks:
+#install mariadb
+    - name: install mariadb and git 
+      yum:
+        name: '{{item}}'
+        state: present
+      loop:
+        - mariadb
+        - mariadb-server
+        - git
+        - MySQL-python
+#start mariadb server
+    - name: start mariadb
+      service:
+        name: mariadb
+        state: started
+#create database on db
+    - name: create database on mariadb
+      mysql_db:
+        name: ecomdb
+        state: present
+#create user and password on udb
+    - name: create application user
+      mysql_user:
+        name: ecomuser
+        password: ecompassword
+        priv: '*.*:ALL,GRANT'
+        host: 172.31.46.51
+        state: present
+#add tables and producst on ecomdb
+    - name: create directory
+      shell: mkdir -p /ashiq
+    - name: add db
+      git:
+        repo: https://github.com/mohammedashiqu/app-ecommerce_project.git
+        dest: /ashiq
+    - name: addtable
+      shell: mysql -f < /ashiq/assets/db-load-script.sql
+#restart webserver and edit index file
+- hosts: web
+  name: restart web
+  become: yes
+  tasks:
+    - name: chnage local host name in index.html
+      shell: sed -i 's/172.20.1.101/172.31.40.69/g' /var/www/html/index.php
+#chnage local host to ip   
+    - name: restart web
+      service:
+        name: httpd
+        state: restarted
