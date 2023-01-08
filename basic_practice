@@ -1,4 +1,4 @@
-- name: install apache
+- name: install apche
   hosts: all
   become: true
   tasks:
