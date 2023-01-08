@@ -1,0 +1,6 @@
+- name: install apache
+  hosts: all
+  become: true
+  tasks:
+    - name: install static website on linux
+      script: /etc/ansible/script.sh
