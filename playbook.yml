@@ -1,0 +1,76 @@
+- hosts: all
+  name: ecommerce application
+  become: true
+  tasks: 
+    - name: install apache
+      yum:
+        name: httpd
+        state: present
+    - name: start apache
+      service:
+        name: httpd
+        state: started
+    - name: install git
+      yum:
+        name: git
+        state: present
+    - name: clone repo
+      git:
+        repo: https://github.com/mohammedashiqu/app-ecommerce_project.git
+        dest: /var/www/html
+    - name: Install common dependencies
+      yum:
+        name:
+          - libselinux-python
+          - libsemanage-python
+        state: present
+- name: Deploy lamp stack application
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install MariaDB package
+      yum:
+        name:
+          - mariadb-server
+          - MySQL-python
+        state: installed
+
+    - name: Start MariaDB Service
+      service: name=mariadb state=started enabled=yes
+    - name: Create Application Database
+      mysql_db: name=ecomdb state=present
+    - name: Create Application DB User
+      mysql_user: name=ecomuser password=ecompassword priv=*.*:ALL host='localhost' state=present
+    - name: Load Inventory Data
+      shell: mysql -f < /var/www/html/assets/db-load-script.sql
+
+- name: Deploy lamp stack application
+  hosts: all
+  become: yes
+  tasks:
+    - name: Install httpd and php
+      yum:
+        name:
+          - httpd
+          - php
+          - php-mysql
+        state: present
+
+    - name: Install web role specific dependencies
+      yum: name=git state=installed
+
+    - name: Set index.php as the default page
+      tags: "Set index.php as the default page"
+      replace:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: 'DirectoryIndex index.html'
+        replace: 'DirectoryIndex index.php'
+
+    - name: http service state
+      service: name=httpd state=started enabled=yes
+    - name: chnage local host
+      command: sudo sed -i 's/172.20.1.101/localhost/g' /var/www/html/index.php
+    - name: restart apache
+      service:
+        name: httpd
+        state: restarted
